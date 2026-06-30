@@ -1,0 +1,101 @@
+// Prisma schema for the async standup bot
+// Provider: PostgreSQL
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  // url is configured in prisma.config.ts (Prisma v7+)
+}
+
+// ─── Organization ────────────────────────────────────────────────────────────
+// Represents a Slack workspace that has installed the bot.
+model Organization {
+  id              String   @id @default(cuid())
+  slackTeamId     String   @unique          // Slack team / workspace ID (T…)
+  slackTeamName   String?
+  botAccessToken  String                    // xoxb- token for this workspace
+  // Billing (Paddle – wired up later)
+  paddleCustomerId     String?  @unique
+  paddleSubscriptionId String?  @unique
+  subscriptionStatus   String   @default("inactive") // active | inactive | past_due | canceled
+  seatCount            Int      @default(0)
+  billingCycleAnchor   DateTime?
+  // Timestamps
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  // Relations
+  users           User[]
+  standupReports  StandupReport[]
+}
+
+// ─── User ─────────────────────────────────────────────────────────────────────
+// Represents an individual Slack workspace member who participates in standups.
+model User {
+  id             String   @id @default(cuid())
+  slackUserId    String   @unique          // Slack user ID (U…)
+  email          String?
+  name           String?
+  isActive       Boolean  @default(true)  // set to false to exclude from standups
+  // Dashboard login (project managers)
+  passwordHash   String?
+  role           Role     @default(MEMBER)
+  // Slack DM state – stores the channel ID opened with the bot
+  dmChannelId    String?
+  // Timestamps
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  // Relations
+  organizationId String
+  organization   Organization    @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  standupReports StandupReport[]
+
+  @@index([organizationId])
+}
+
+enum Role {
+  ADMIN
+  MANAGER
+  MEMBER
+}
+
+// ─── StandupReport ────────────────────────────────────────────────────────────
+// One standup submission per user per day.
+model StandupReport {
+  id              String   @id @default(cuid())
+  reportDate      DateTime @default(now()) @db.Date  // the calendar day
+  // Core standup fields
+  yesterday       String?  @db.Text   // what they completed yesterday
+  today           String?  @db.Text   // what they plan to do today
+  roadblocks      String?  @db.Text   // any blockers / impediments
+  hasBlocker      Boolean  @default(false)  // true when a blocker is detected
+  // Conversation context – Slack thread / channel
+  slackChannelId  String?
+  slackThreadTs   String?
+  // Submission state
+  status          ReportStatus @default(PENDING)
+  // Timestamps
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  // Relations
+  userId         String
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, reportDate])   // one report per user per day
+  @@index([organizationId, reportDate])
+  @@index([userId, reportDate])
+}
+
+enum ReportStatus {
+  PENDING      // DM sent, waiting for reply
+  IN_PROGRESS  // partially answered
+  COMPLETE     // all three questions answered
+  SKIPPED      // user explicitly skipped
+}

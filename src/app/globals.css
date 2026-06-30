@@ -1,26 +1,22 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --font-inter: "Inter", sans-serif;
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+html {
+  scroll-behavior: smooth;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
-}
+/* Custom scrollbar – light theme */
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: #f1f5f9; }
+::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 99px; }
+::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+/* Blocker card glow – warm amber/red for light mode */
+@keyframes blocker-pulse {
+  0%, 100% { box-shadow: 0 0 0 3px rgba(239,68,68,0.12), 0 4px 16px rgba(239,68,68,0.10); }
+  50%       { box-shadow: 0 0 0 5px rgba(239,68,68,0.22), 0 8px 24px rgba(239,68,68,0.18); }
 }
+.blocker-glow { animation: blocker-pulse 2.8s ease-in-out infinite; }
