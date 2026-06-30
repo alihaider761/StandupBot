@@ -22,14 +22,26 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "An account with this email already exists." }, { status: 409 });
     }
 
-    // Find or create a default org (single-tenant bootstrap)
-    let org = await prisma.organization.findFirst();
+    // Find the real org — must have a valid Slack team ID (not a generated one)
+    let org = await prisma.organization.findFirst({
+      where: {
+        NOT: { slackTeamId: { startsWith: "team_" } },
+      },
+      orderBy: { createdAt: "asc" },
+    });
+
+    // Fallback: any org
+    if (!org) {
+      org = await prisma.organization.findFirst({ orderBy: { createdAt: "asc" } });
+    }
+
+    // Last resort: create one
     if (!org) {
       org = await prisma.organization.create({
         data: {
-          slackTeamId: `team_${Date.now()}`,
-          slackTeamName: "My Workspace",
-          botAccessToken: process.env.SLACK_BOT_TOKEN ?? "",
+          slackTeamId:        `team_${Date.now()}`,
+          slackTeamName:      "My Workspace",
+          botAccessToken:     process.env.SLACK_BOT_TOKEN ?? "",
           subscriptionStatus: "inactive",
         },
       });
