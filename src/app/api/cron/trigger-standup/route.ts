@@ -84,12 +84,12 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         continue;
       }
 
-      // 4b. Skip if the user already has a completed report for today
+      // 4b. Skip if the user already has ANY report for today (sent or complete)
       const existingReport = await prisma.standupReport.findUnique({
         where: { userId_reportDate: { userId: user.id, reportDate: today } },
       });
-      if (existingReport?.status === "COMPLETE") {
-        results.push({ userId: user.slackUserId, status: "already_complete" });
+      if (existingReport) {
+        results.push({ userId: user.slackUserId, status: "already_sent" });
         continue;
       }
 
